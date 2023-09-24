@@ -94,7 +94,7 @@
 			<ol>
 				<li><strong>Spawn objects at player (placeatme)</strong><br>
 					Example: <code><span class="muted">http://localhost:8111/</span>?<span class="attr">type</span>=<span class="val">0</span>&<span class="attr">form</span>=<span class="val">0x64b33</span>&<span class="attr">count</span>=<span class="val">50</span></code><br>
-					<small>Spawns 50 cheese wheels at player. Do not use this to spawn NPCs.</small></li>
+					<small>Spawns 50 cheese wheels at player. Do not use this to spawn NPCs. Spawning a lot of items can cause a lot of physics-related damage.</small></li>
 				<li><strong>Add item to player inventory (additem)</strong><br>
 					Example: <code><span class="muted">http://localhost:8111/</span>?<span class="attr">type</span>=<span class="val">1</span>&<span class="attr">form</span>=<span class="val">Skyrim.esm|f</span>&<span class="attr">count</span>=<span class="val">100</span></code><br>
 					<small>Adds 100 gold to player inventory</small></li>
@@ -107,6 +107,9 @@
 				<li><strong>Equip item on player</strong><br>
 					Example: <code><span class="muted">http://localhost:8111/</span>?<span class="attr">type</span>=<span class="val">4</span>&<span class="attr">form</span>=<span class="val">3eb2a</span></code><br>
 					<small>Equip/use Warrior's potion. Can be used with weapons, armor, food... basically anything equipable. Spells or LeveledItems won't work.</small></li>
+				<li><strong>Force-read a book</strong><br>
+					Example: <code><span class="muted">http://localhost:8111/</span>?<span class="attr">type</span>=<span class="val">5</span>&<span class="attr">form</span>=<span class="val">PakLTwitchIntegration.esp|A23</span></code><br>
+					<small>Makes the player read an uplifiting note. This places the book/note/journal item at the player, activates it and deletes it. You could use it for different activatable objects. Just keep in mind that the world-object will be deleted immediatly.</small></li>
 				<li><strong>Spawn named helper</strong><br>
 					Example: <code><span class="muted">http://localhost:8111/</span><span class="path">help</span>?<span class="attr">name</span>=<span class="val">Kappa</span>&<span class="attr">form</span>=<span class="val">1aef1</span></code><br>
 					<small>Spawns an Bandit that will follow you, that is named Kappa. While I try my best to keep the NPC from attacking you, based on the NPCs AI it might attack friendly NPCs. It will only be one follower alive at a time. Health regeneration is disabled for that follower. After a certain amount of time (default: 5 min) the follower will vanish. You can set the time until vanish in the MCM.</small></li>
