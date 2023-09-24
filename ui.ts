@@ -15,7 +15,7 @@ export function buildIndex() {
 			for(const line of lines) {
 				const columns = line.trim().split(";");
 				if(columns.length < 5) continue;
-				forms_index.set(`${columns[2]}_${columns[3].replace(/[^a-z0-9]/i,"")}_${columns[4].replace(/[^a-z0-9]/i,"")}`.toLocaleLowerCase(), { plugin: columns[0], row });
+				forms_index.set(`${columns[0].replace(/_/g,'')}${columns[2]}_${columns[3].replace(/[^a-z0-9]/i,"")}_${columns[4].replace(/[^a-z0-9]/i,"")}`.toLocaleLowerCase(), { plugin: columns[0], row });
 				row++;
 			}
 		}
