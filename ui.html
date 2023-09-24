@@ -73,7 +73,7 @@
 	</head>
 	<body>
 		<h1>Integration Bridge</h1>
-		<p>This is a little helping page where you can an overview about the Webhook, search for form IDs, configure a form map and test the mod.</p>
+		<p>This is a little helping page where you can an overview about the Webhook, search for form IDs and test the mod.</p>
 		<h2>Webhook</h2>
 		<a class="expand-link" data-container="webhook-info" href="#">▲ Expand description</a> | <a onClick="webhookDialog('','','')" href="#">Webhook builder</a>
 		<div id="webhook-info" class="hidden">
@@ -168,6 +168,58 @@
 		</dialog>
 
 		<script type="application/javascript">
+			/**
+			 * @param {string} url
+			 * @param {(response: string|null) => void} callback
+			 * @returns {XMLHttpRequest}
+			 */
+			 function _http_get(url, callback = r => {}) {
+				const request = new XMLHttpRequest();
+				request.open("GET", url);
+				request.addEventListener("load", ev => {
+					callback(request.responseText);
+				});
+				request.addEventListener("error", ev => {
+					callback(null);
+				});
+				request.send();
+				return request;
+			}
+
+			/**
+			 * @param {string} url
+			 * @param {string} data
+			 * @param {(response: string|null) => void} callback
+			 * @returns {XMLHttpRequest}
+			 */
+			function _http_post(url, data, callback = r => {}) {
+				const request = new XMLHttpRequest();
+				request.open("POST", url);
+				request.addEventListener("load", ev => {
+					callback(request.responseText);
+				});
+				request.addEventListener("error", ev => {
+					callback(null);
+				});
+				request.send(new Blob([data]));
+				return request;
+			}
+
+			document.querySelectorAll(".expand-link").forEach(link => {
+				link.style.cursor = "pointer";
+				link.addEventListener("click", () => {
+					const container = document.getElementById(link.dataset.container);
+					if (container.classList.contains("hidden")) {
+						container.classList.remove("hidden");
+						link.innerText = "▼ Collapse description";
+					} else {
+						container.classList.add("hidden");
+						link.innerText = "▲ Expand description";
+					}
+				});
+			});
+		</script>
+		<script type="application/javascript">
 			/** @type {{[key: string]: string[]}} */
 			const enabled_webhook_types = {
 				"0": ["ALCH", "AMMO", "ARMO", "WEAP", "INGR", "MISC", "SCRL", "BOOK"],
@@ -253,40 +305,8 @@
 				_http_get(url);
 				el_webhook_dialog.close();
 			});
-
-			/**
-			 * @param {string} url
-			 * @param {(response: string|null) => void} callback
-			 * @returns {XMLHttpRequest}
-			 */
-			function _http_get(url, callback = r => {}) {
-				const request = new XMLHttpRequest();
-				request.open("GET", url);
-				request.addEventListener("load", ev => {
-					callback(request.responseText);
-				});
-				request.addEventListener("error", ev => {
-					callback(null);
-				});
-				request.send();
-				return request;
-			}
-
-			document.querySelectorAll(".expand-link").forEach(link => {
-				link.style.cursor = "pointer";
-				link.addEventListener("click", () => {
-					const container = document.getElementById(link.dataset.container);
-					if (container.classList.contains("hidden")) {
-						container.classList.remove("hidden");
-						link.innerText = "▼ Collapse description";
-					} else {
-						container.classList.add("hidden");
-						link.innerText = "▲ Expand description";
-					}
-				});
-			});
-
-
+		</script>
+		<script type="application/javascript">
 			const el_html = document.querySelector("html");
 			const el_search_result = document.querySelector("#search-result");
 			/** @type {XMLHttpRequest|null} */
