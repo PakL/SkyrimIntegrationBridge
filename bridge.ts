@@ -1,3 +1,5 @@
+import { buildIndex, findForms, generateHTML } from "./ui.ts";
+
 interface SkyrimIntegrationSpawn {
 	name: string;
 	form: string;
@@ -49,6 +51,8 @@ function writePTW(name: string, events: SkyrimIntegrationSpawn[]|SkyrimIntegrati
 	return !adding_failed;
 }
 
+let index_build = false;
+
 async function handleHttp(conn: Deno.Conn) {
 	for await (const e of Deno.serveHttp(conn)) {
 		const url = new URL(e.request.url);
@@ -60,9 +64,11 @@ async function handleHttp(conn: Deno.Conn) {
 		let type = -1;
 		let form = "";
 		let count = 1;
+		let search = "";
 		url.searchParams.forEach((value, key) => {
 			switch(key) {
 				case "name": name = value; break;
+				case "query": search = value; break;
 				case "type": type = parseInt(value); break;
 				case "form": {
 					const formsplits: string[] = value.split("|");
@@ -83,10 +89,29 @@ async function handleHttp(conn: Deno.Conn) {
 			filename = "spawns.ptw";
 		} else if(url.pathname.match(/^\/enemy/i)) {
 			filename = "enemies.ptw";
+		} else if(url.pathname.match(/^\/search/i)) {
+			if(!index_build) {
+				console.log("= Building index");
+				buildIndex();
+				index_build = true;
+			}
+			if(search.length > 0) {
+				e.respondWith(new Response(generateHTML(findForms(search, [], ["ENCH", "MGEF"]))));
+			} else {
+				e.respondWith(new Response(null, { status: 204 }));
+			}
+			continue;
+		} else if(type < 0) {
+			try {
+				e.respondWith(new Response(Deno.readTextFileSync("./ui.html"), { headers: { "Content-Type": "text/html" } }));
+			} catch {
+				e.respondWith(new Response("unable to load ui.html", { status: 404 }));
+			}
+			continue;
 		}
 
-		if(filename === "events.ptw" && type > -1 && type <= 4 && form.length > 0) {
 
+		if(filename === "events.ptw" && type > -1 && type <= 5 && form.length > 0) {
 			if(count < 1) count = 1;
 			if(type == 0 && count > 128) count = 128;
 
@@ -102,7 +127,7 @@ async function handleHttp(conn: Deno.Conn) {
 			const adding_failed = !writePTW(filename, events);
 			e.respondWith(new Response((adding_failed ? "could not create event" : "ok"), { status: adding_failed ? 500 : 200 }));
 		} else {
-			e.respondWith(new Response("bad request", { status: 400 }));
+			e.respondWith(new Response("not found", { status: 404 }));
 		}
 
 	}
@@ -132,6 +157,7 @@ if(typeof(config.port) !== "number" || typeof(config.skyrimpath) !== "string") {
 }
 
 console.log("= Skyrim path: " + config.skyrimpath);
+
 console.log("= Starting server on port " + config.port);
 for await (const conn of Deno.listen({ port: config.port })) {
 	await handleHttp(conn);
