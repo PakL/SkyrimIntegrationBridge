@@ -75,7 +75,7 @@
 		<h1>Integration Bridge</h1>
 		<p>This is a little helping page where you can an overview about the Webhook, search for form IDs, configure a form map and test the mod.</p>
 		<h2>Webhook</h2>
-		<a class="expand-link" data-container="webhook-info">▲ Expand</a>
+		<a class="expand-link" data-container="webhook-info" href="#">▲ Expand description</a> | <a onClick="webhookDialog('','','')" href="#">Webhook builder</a>
 		<div id="webhook-info" class="hidden">
 			<p>Most local-run Twitch bots or automation applications, even the Stream Deck, let you make web requests. Your request is made via unencrypted http on a non-default port. So the start of you URL looks like this: <code>http://localhost:8111/</code> after this you add "search parameters". These are known but not required for every request:</p>
 			<ul>
@@ -206,7 +206,7 @@
 					webhook_url += type + `?name=${encodeURIComponent(name)}&form=${form}`;
 				} else {
 					el_webhook_name_row.classList.add("hidden");
-					if(type === "4") {
+					if(type === "4" || type === "5") {
 						el_webhook_count_row.classList.add("hidden");
 						count = 1;
 					} else {
@@ -234,7 +234,7 @@
 			function webhookDialog(signature, form, name) {
 				let first_enabled = "";
 				el_webhook_type_options.forEach(option => {
-					option.disabled = !(signature.length > 0 && enabled_webhook_types[option.value].includes(signature));
+					option.disabled = !(signature.length <= 0 || enabled_webhook_types[option.value].includes(signature));
 					if(first_enabled.length == 0 && !option.disabled) first_enabled = option.value;
 				});
 				el_webhook_type.value = first_enabled;
@@ -278,10 +278,10 @@
 					const container = document.getElementById(link.dataset.container);
 					if (container.classList.contains("hidden")) {
 						container.classList.remove("hidden");
-						link.innerText = "▼ Collapse";
+						link.innerText = "▼ Collapse description";
 					} else {
 						container.classList.add("hidden");
-						link.innerText = "▲ Expand";
+						link.innerText = "▲ Expand description";
 					}
 				});
 			});
@@ -300,7 +300,10 @@
 				clearTimeout(search_timeout);
 				search_timeout = setTimeout(() => {
 					const search = document.querySelector("#search").value.trim();
-					if(search.length < 2) return;
+					if(search.length < 2) {
+						el_search_result.innerHTML = "";
+						return;
+					}
 
 					search_request = _http_get("./search?query=" + encodeURIComponent(search), response => {
 						if(response !== null) {
