@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::Read;
 
 mod webinterface;
+pub mod formsearch;
 
 #[derive(Serialize, Deserialize, Default)]
 struct BridgeConfig {
