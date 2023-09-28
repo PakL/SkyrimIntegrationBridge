@@ -129,11 +129,20 @@ pub fn find_forms(index: &HashMap<String, FormIndex>, query: &str, filter_white:
 			}
 
 			result.push(match split.get(1).unwrap().clone().as_str() {
-				"NPC_" => Form::NPC_ {
-					plugin, form_type, formid, editorid, name,
-					race: split.get(5).unwrap().clone(),
-					level: split.get(6).unwrap().clone(),
-					attributes: split.get(7).unwrap().clone(),
+				"NPC_" => {
+					let mut level = split.get(6).unwrap().clone();
+					if level.contains(",") {
+						let lvlsplits: Vec<&str> = level.split(',').collect();
+						if lvlsplits.len() == 3 {
+							level = format!("PC×{}, Min. Lvl.: {}, Max. Lvl.: {}", lvlsplits.get(0).unwrap(), lvlsplits.get(1).unwrap(), lvlsplits.get(2).unwrap());
+						}
+					}
+					Form::NPC_ {
+						plugin, form_type, formid, editorid, name,
+						race: split.get(5).unwrap().clone(),
+						level,
+						attributes: split.get(7).unwrap().clone(),
+					}
 				},
 				"ALCH" => Form::ALCH {
 					plugin, form_type, formid, editorid, name,
