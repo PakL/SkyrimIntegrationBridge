@@ -31,6 +31,12 @@ struct WebhookEventQuery {
 	count: u16,
 }
 
+#[derive(Serialize, Deserialize)]
+struct WebhookNamedEventQuery {
+	form: String,
+	name: String,
+}
+
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
 struct SearchQuery {
@@ -206,14 +212,56 @@ fn search_response_callback(query: SearchQuery) -> reply::WithStatus<reply::Html
 	reply::with_status(reply::html(tpl.render().unwrap_or(ERROR_RESP.to_string())), warp::http::StatusCode::OK)
 }
 
+fn named_spawns_response_callback(query: WebhookNamedEventQuery, spawn_file: &str, skyrim_path: String) -> reply::WithStatus<reply::Html<String>> {
+	println!("> Received help request {}", json!(query));
+	
+	let path_buf = Path::new(&skyrim_path).join(spawn_file);
+	let path = path_buf.as_path();
+	let mut events = read_file_with_retry::<Vec<WebhookNamedEventQuery>>(path).unwrap_or_default();
+	let new_event = WebhookNamedEventQuery {
+		form: prepare_formid(query.form),
+		name: query.name
+	};
+	if new_event.form.is_empty() {
+		return reply::with_status(reply::html("invalid form".to_string()), warp::http::StatusCode::BAD_REQUEST);
+	}
+
+	let event_json = json!(new_event);
+	events.append(&mut vec![new_event]);
+	let write_error = write_file_with_retry(path, &events);
+
+	let (message, status) = match write_error {
+		Some(e) => (e.to_string(), warp::http::StatusCode::INTERNAL_SERVER_ERROR),
+		None	=> {
+			println!("< Wrote event {}", event_json);
+			("ok".to_string(), warp::http::StatusCode::OK)
+		},
+	};
+	reply::with_status(reply::html(message), status)
+}
+
 
 pub async fn start_webinterface(port: u16, skyrim_path: String) {
+	let skyrim_path_for_index = skyrim_path.clone();
 	let index = warp::path::end()
 		.and(warp::query::<WebhookEventQuery>())
-		.and(warp::any().map(move || skyrim_path.clone()))
+		.and(warp::any().map(move || skyrim_path_for_index.clone()))
 		.map(default_response_callback);
 
-	
+	let skyrim_path_for_help = skyrim_path.clone();
+	let help = warp::path("help")
+		.and(warp::query::<WebhookNamedEventQuery>())
+		.and(warp::any().map(move || "spawns.ptw"))
+		.and(warp::any().map(move || skyrim_path_for_help.clone()))
+		.map(named_spawns_response_callback);
+
+	let skyrim_path_for_enemy = skyrim_path.clone();
+	let enemy = warp::path("enemy")
+		.and(warp::query::<WebhookNamedEventQuery>())
+		.and(warp::any().map(move || "enemies.ptw"))
+		.and(warp::any().map(move || skyrim_path_for_enemy.clone()))
+		.map(named_spawns_response_callback);
+
 	let mut index_lock = FORM_INDEX.lock().unwrap();
 	*index_lock = Some(formsearch::build_index());
 	drop(index_lock);
@@ -222,7 +270,7 @@ pub async fn start_webinterface(port: u16, skyrim_path: String) {
 		.and(warp::query::<SearchQuery>())
 		.map(search_response_callback);
 
-	let routes = index.or(search);
+	let routes = index.or(search).or(help).or(enemy);
 
 	println!("= Starting server on port {}", port);
 	warp::serve(routes).run(([127, 0, 0, 1], port)).await;
