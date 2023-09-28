@@ -2,17 +2,24 @@ use warp::{ Filter, reply };
 use askama::Template;
 use serde::{ Deserialize, Serialize, de::DeserializeOwned };
 use std::path::Path;
+use std::sync::Mutex;
 use std::{ thread, time };
-// use serde_json::json;
-
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{ Read, Write };
+use serde_json::json;
 
-use super::formsearch;
+use super::{ formsearch, formsearch::{ Form, FormIndex } };
 
 #[derive(Template)]
 #[template(path = "ui.html")]
 struct UiTemplate {
+}
+
+#[derive(Template)]
+#[template(path = "search_results.html")]
+struct SearchResultsTemplate {
+	results: Vec<Form>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -22,6 +29,12 @@ struct WebhookEventQuery {
 	event_type: Option<u8>,
 	form: String,
 	count: u16,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
+struct SearchQuery {
+	query: String,
 }
 
 const ERROR_RESP: &str = "<html>Oh no!</html>";
@@ -141,6 +154,7 @@ fn write_file_with_retry<T: Serialize>(path: &Path, data: &T) -> Option<std::io:
 
 fn default_response_callback(query: WebhookEventQuery, skyrim_path: String) -> reply::WithStatus<reply::Html<String>> {
 	if let Some(event_type) = query.event_type {
+		println!("> Received event {}", json!(query));
 		if event_type <= 5 {
 			let path_buf = Path::new(&skyrim_path).join("events.ptw");
 			let path = path_buf.as_path();
@@ -154,15 +168,20 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String) -> r
 				return reply::with_status(reply::html("invalid form".to_string()), warp::http::StatusCode::BAD_REQUEST);
 			}
 
+			let event_json = json!(new_event);
 			events.append(&mut vec![new_event]);
 			let write_error = write_file_with_retry(path, &events);
 
 			let (message, status) = match write_error {
 				Some(e) => (e.to_string(), warp::http::StatusCode::INTERNAL_SERVER_ERROR),
-				None	=> ("ok".to_string(), warp::http::StatusCode::OK),
+				None	=> {
+					println!("< Wrote event {}", event_json);
+					("ok".to_string(), warp::http::StatusCode::OK)
+				},
 			};
 			reply::with_status(reply::html(message), status)
 		} else {
+			println!("x Invalid form");
 			reply::with_status(reply::html("invalid type".to_string()), warp::http::StatusCode::BAD_REQUEST)
 		}
 	} else {
@@ -171,21 +190,40 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String) -> r
 	}
 }
 
+static FORM_INDEX: Mutex<Option<HashMap<String, FormIndex>>> = Mutex::new(None);
+
+fn search_response_callback(query: SearchQuery) -> reply::WithStatus<reply::Html<String>> {
+	if query.query.is_empty() {
+		return reply::with_status(reply::html("".to_string()), warp::http::StatusCode::OK);
+	}
+
+	println!("> Searching for {}", query.query);
+	let lock = FORM_INDEX.lock().unwrap();
+	let index = lock.as_ref().unwrap();
+	let forms = formsearch::find_forms(&index, query.query.as_str(), vec![], vec![]);
+	println!("< {} results", forms.len());
+	let tpl = SearchResultsTemplate{ results: forms };
+	reply::with_status(reply::html(tpl.render().unwrap_or(ERROR_RESP.to_string())), warp::http::StatusCode::OK)
+}
+
+
 pub async fn start_webinterface(port: u16, skyrim_path: String) {
 	let index = warp::path::end()
 		.and(warp::query::<WebhookEventQuery>())
 		.and(warp::any().map(move || skyrim_path.clone()))
 		.map(default_response_callback);
 
+	
+	let mut index_lock = FORM_INDEX.lock().unwrap();
+	*index_lock = Some(formsearch::build_index());
+	drop(index_lock);
 
-	let form_index = formsearch::build_index();
-	println!("= Index size: {}", form_index.len());
+	let search = warp::path("search")
+		.and(warp::query::<SearchQuery>())
+		.map(search_response_callback);
 
-	let forms = formsearch::find_forms(&form_index, "bandit", vec!["NPC_"], vec![]);
-	for form in forms {
-		println!("=> {}", form.join(" ; "));
-	}
+	let routes = index.or(search);
 
 	println!("= Starting server on port {}", port);
-	warp::serve(index).run(([127, 0, 0, 1], port)).await;
+	warp::serve(routes).run(([127, 0, 0, 1], port)).await;
 }

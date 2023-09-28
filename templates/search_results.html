@@ -1,0 +1,63 @@
+{%- macro send_button(plugin, form_type, formid, name) -%}
+<button type="button" class="form-send" title="Send to Skyrim" onClick='webhookDialog("{{ form_type }}", "{{ plugin }}|{{ formid }}", "{{ name }}")'>🐲</button>
+{%- endmacro -%}
+
+{%- macro basic_form_info(plugin, form_type, formid, editorid, name) -%}
+<div class="form-name">{{ name }}{% if name != editorid %} <small class="muted">- {{ editorid }}</small>{% endif %}</div>
+<div class="form-id">({{ form_type }}) {{ plugin }}|{{ formid }}</div>
+{%- endmacro -%}
+
+{%- for form in results -%}
+<div class="form">
+{%- match form -%}
+	{%- when Form::NPC_ with { plugin, form_type, formid, editorid, name, race, level, attributes } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">Race: {{ race }}, Level: {{ level }}, Highest Attributes: {{ attributes }}</div>
+
+	{%- when Form::ALCH with { plugin, form_type, formid, editorid, name, weight, value, effect } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">Weight: {{ weight }}, Value: {{ value }}{% if !effect.is_empty() %}, Effect: {{ effect }}{% endif %}</div>
+
+	{%- when Form::AMMO with { plugin, form_type, formid, editorid, name, damage, value } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">Damage: {{ damage }}, Value: {{ value }}</div>
+
+	{%- when Form::ARMO with { plugin, form_type, formid, editorid, name, armor_type, rating, value, weight } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">{{ armor_type }}, Armor rating: {{ rating }}, Value: {{ value }}, Weight: {{ weight }}</div>
+
+	{%- when Form::WEAP with { plugin, form_type, formid, editorid, name, skill, damage, value, weight, effect } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">{{ skill }}, Damage: {{ damage }}, Value: {{ value }}, Weight: {{ weight }}{% if !effect.is_empty() %}, Effect: {{ effect }}{% endif %}</div>
+
+	{%- when Form::INGR with { plugin, form_type, formid, editorid, name, value, weight } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">Value: {{ value }}, Weight: {{ weight }}</div>
+
+	{%- when Form::MISC with { plugin, form_type, formid, editorid, name, value, weight } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">Value: {{ value }}, Weight: {{ weight }}</div>
+
+	{%- when Form::SPEL with { plugin, form_type, formid, editorid, name, spell_type, cost, effect } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">{{ spell_type }}, Base cost: {{ cost }}{% if !effect.is_empty() %}, Effect: {{ effect }}{% endif %}</div>
+
+	{%- when Form::SCRL with { plugin, form_type, formid, editorid, name, effect, } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+		<div class="form-details">{% if !effect.is_empty() %}Effect: {{ effect }}{% endif %}</div>
+
+	{%- when Form::Other with { plugin, form_type, formid, editorid, name } -%}
+		{%- call send_button(plugin, form_type, formid, name) -%}
+		{%- call basic_form_info(plugin, form_type, formid, editorid, name) -%}
+{%- endmatch -%}
+</div>
+{%- endfor -%}
