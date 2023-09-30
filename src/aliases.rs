@@ -35,7 +35,7 @@ pub fn load_aliases() {
 			let mut lock = ALIASES.lock().unwrap();
 			let mut map = HashMap::new();
 			for alias in aliases {
-				map.insert(alias.alias.clone(), alias);
+				map.insert(alias.alias.to_lowercase(), alias);
 			}
 			*lock = Some(map);
 		},
@@ -48,9 +48,10 @@ pub fn load_aliases() {
 
 pub fn get_alias(alias: &String) -> Option<Alias> {
 	let lock = ALIASES.lock().unwrap();
-	
+
 	if let Some(map) = &*lock {
-		if let Some(alias) = map.get(alias) {
+		let alias = alias.to_lowercase();
+		if let Some(alias) = map.get(&alias) {
 			return Some(alias.clone());
 		}
 	}
@@ -73,7 +74,7 @@ pub fn set_aliases(aliases: Vec<Alias>) {
 	let mut lock = ALIASES.lock().unwrap();
 	let mut map = HashMap::new();
 	for alias in aliases {
-		map.insert(alias.alias.clone(), alias);
+		map.insert(alias.alias.to_lowercase(), alias);
 	}
 	*lock = Some(map);
 }
