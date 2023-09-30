@@ -16,6 +16,7 @@ use super::{ formsearch, formsearch::{ Form, FormIndex } };
 #[template(path = "ui.html")]
 struct UiTemplate {
 	aliases: Vec<aliases::Alias>,
+	alias_write_error: Option<String>,
 }
 
 #[derive(Template)]
@@ -193,8 +194,9 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String, alia
 			reply::with_status(reply::html("invalid type".to_string()), warp::http::StatusCode::BAD_REQUEST)
 		}
 	} else {
+		let mut alias_write_error: Option<String> = None;
 		if alias_form.contains_key("alias_new") {
-			println!("> Received alias save {}", json!(alias_form));
+			println!("> Incoming alias save");
 			let mut new_aliases: Vec<aliases::Alias> = vec![];
 			for (key, value) in alias_form.iter() {
 				if key.starts_with("alias_") {
@@ -218,12 +220,19 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String, alia
 			}
 
 			aliases::set_aliases(new_aliases);
-			aliases::save_aliases();
-		} else {
+			match aliases::save_aliases() {
+				Err(e) => {
+					println!("x Error saving aliases");
+					alias_write_error = Some(e.to_string())
+				},
+				_ => {},
+			}
+		}
+		if !alias_form.contains_key("alias_new") || !alias_write_error.is_none() {
 			aliases::load_aliases();
 		}
 		let aliases = aliases::get_aliases();
-		let tpl = UiTemplate{ aliases };
+		let tpl = UiTemplate { aliases, alias_write_error };
 		reply::with_status(reply::html(tpl.render().unwrap_or(ERROR_RESP.to_string())), warp::http::StatusCode::OK)
 	}
 }

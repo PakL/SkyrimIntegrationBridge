@@ -78,7 +78,7 @@ pub fn set_aliases(aliases: Vec<Alias>) {
 	*lock = Some(map);
 }
 
-pub fn save_aliases() {
+pub fn save_aliases() -> std::io::Result<()> {
 	let lock = ALIASES.lock().unwrap();
 	
 	if let Some(map) = &*lock {
@@ -89,9 +89,10 @@ pub fn save_aliases() {
 			aliases.push(map[key].clone());
 		}
 		let json = serde_json::to_string_pretty(&aliases).unwrap();
-		let mut file = File::create("aliases.json").unwrap();
+		let mut file = File::create("aliases.json")?;
 		file.write_all(json.as_bytes()).unwrap();
 	} else {
 		println!("= No aliases data to write");
 	}
+	Ok(())
 }

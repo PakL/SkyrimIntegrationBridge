@@ -22,13 +22,16 @@
 				color: #888888;
 			}
 			.attr {
-				color: #ff00ff;
+				color: #ce64ce;
 			}
 			.val {
-				color: #00ffff;
+				color: #42caca;
 			}
 			.path {
-				color: #00ff00;
+				color: #4bca4b;
+			}
+			.error {
+				color: #922020;
 			}
 
 			li {
@@ -133,6 +136,11 @@
 
 		<h2>Form aliases</h2>
 		<p>You can set aliases for form ids. You can pass these aliases as the <code class="attr">form</code> value in the webhook. In combination with <code class="attr">alias_group</code> you can filter what aliases are allowed. Aliases may have any character or symbol except for spaces. Filter groups may only contain lower case letters (a-z), you can assign multiple groups to one alias, seperated with comma.</p>
+		{%- match alias_write_error %}
+			{%- when Some(err) %}
+		<p class="error">An error occured while saving aliases: {{ err }}.</p>
+			{%- when None %}
+		{%- endmatch %}
 		<form method="post" action="/">
 			{%- for (i, alias) in aliases.iter().enumerate() %}
 			<div class="alias">
