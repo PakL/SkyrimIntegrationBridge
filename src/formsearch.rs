@@ -28,7 +28,7 @@ pub fn build_index() -> HashMap<String, FormIndex> {
 	let mut result: HashMap<String, FormIndex> = HashMap::new();
 
 	println!("= Building form index");
-	let allow_ascii = Regex::new(r"[^a-zA-Z0-9_]").unwrap();
+	let allow_ascii = Regex::new(r"[^a-zA-Z0-9]").unwrap();
 	if let Ok(dir) = fs::read_dir("forms") {
 		for file in dir {
 			let path = file.unwrap().path();

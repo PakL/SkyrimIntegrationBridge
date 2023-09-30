@@ -8,6 +8,7 @@ use std::{ thread, time };
 use std::fs::File;
 use std::io::{ Read, Write };
 use serde_json::json;
+use regex::Regex;
 
 use super::aliases;
 use super::{ formsearch, formsearch::{ Form, FormIndex } };
@@ -48,7 +49,7 @@ struct SearchQuery {
 
 const ERROR_RESP: &str = "<html>Oh no!</html>";
 
-fn prepare_formid(form: String) -> String {
+fn prepare_formid(form: String, for_jcontainers: bool) -> String {
 	let mut splits: Vec<&str> = form.split("|").collect();
 	if splits.len() == 1 {
 		splits.insert(0, "Skyrim.esm");
@@ -64,8 +65,8 @@ fn prepare_formid(form: String) -> String {
 		return String::new();
 	}
 
-	let formid = splits.get(2).unwrap().to_string();
-	if formid.len() > 8 {
+	let formid = splits.get(2).unwrap().to_ascii_uppercase().to_string();
+	if formid.len() > 8 || formid.is_empty() {
 		return String::new();
 	}
 
@@ -92,9 +93,14 @@ fn prepare_formid(form: String) -> String {
 		}
 	}
 
-	let new_formid = format!("0x{}", formid);
-	if !has_prefix {
-		splits.splice(2..3, [new_formid.as_str()]);
+	let mut new_formid = format!("0x{}", formid);
+	if has_prefix {
+		new_formid = formid.replace("X", "x");
+	}
+	splits.splice(2..3, [new_formid.as_str()]);
+
+	if !for_jcontainers {
+		splits.remove(0);
 	}
 
 	splits.join("|")
@@ -170,7 +176,7 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String, alia
 			let mut events = read_file_with_retry::<Vec<WebhookEventQuery>>(path).unwrap_or_default();
 			let new_event = WebhookEventQuery {
 				event_type: Some(event_type),
-				form: prepare_formid(query.form),
+				form: prepare_formid(query.form, true),
 				count: if query.count < 1 { 1 } else { query.count },
 			};
 			if new_event.form.is_empty() {
@@ -197,38 +203,42 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String, alia
 		let mut alias_write_error: Option<String> = None;
 		if alias_form.contains_key("alias_new") {
 			println!("> Incoming alias save");
+			let allow_letters = Regex::new(r"[^a-z,]").unwrap();
 			let mut new_aliases: Vec<aliases::Alias> = vec![];
 			for (key, value) in alias_form.iter() {
 				if key.starts_with("alias_") {
-					if value.is_empty() {
+					let alias = value.replace(" ", "");
+					if alias.is_empty() {
 						continue;
 					}
 
 					let suffix = key.trim_start_matches("alias_");
-					let form = alias_form.get(&format!("form_{}", suffix)).map_or(String::new(), |v| v.clone());
-					if form.is_empty() {
-						continue;
+					let mut form = alias_form.get(&format!("form_{}", suffix)).map_or(String::new(), |v| v.clone());
+					let form_prep = prepare_formid(form.clone(), false);
+					if form_prep.is_empty() {
+						println!("x Invalid form for alias {}", alias);
+						alias_write_error = Some(format!("Invalid form for alias {}", alias));
+					} else {
+						form = form_prep;
 					}
-					let filter_group = alias_form.get(&format!("group_{}", suffix)).map_or(String::new(), |v| v.clone());
+					let mut filter_group = alias_form.get(&format!("group_{}", suffix)).map_or(String::new(), |v| v.clone());
+					filter_group = allow_letters.replace_all(filter_group.to_ascii_lowercase().as_str(), "").to_string();
 
-					new_aliases.push(aliases::Alias {
-						alias: value.clone(),
-						form,
-						filter_group,
-					});
+					new_aliases.push(aliases::Alias { alias, form, filter_group, });
 				}
 			}
 
 			aliases::set_aliases(new_aliases);
-			match aliases::save_aliases() {
-				Err(e) => {
-					println!("x Error saving aliases");
-					alias_write_error = Some(e.to_string())
-				},
-				_ => {},
+			if alias_write_error.is_none() {
+				match aliases::save_aliases() {
+					Err(e) => {
+						println!("x Error saving aliases");
+						alias_write_error = Some(e.to_string())
+					},
+					_ => {},
+				}
 			}
-		}
-		if !alias_form.contains_key("alias_new") || !alias_write_error.is_none() {
+		} else {
 			aliases::load_aliases();
 		}
 		let aliases = aliases::get_aliases();
@@ -260,7 +270,7 @@ fn named_spawns_response_callback(query: WebhookNamedEventQuery, spawn_file: &st
 	let path = path_buf.as_path();
 	let mut events = read_file_with_retry::<Vec<WebhookNamedEventQuery>>(path).unwrap_or_default();
 	let new_event = WebhookNamedEventQuery {
-		form: prepare_formid(query.form),
+		form: prepare_formid(query.form, true),
 		name: query.name
 	};
 	if new_event.form.is_empty() {
