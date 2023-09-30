@@ -377,7 +377,7 @@
 			 */
 			function removeAlias(index) {
 				const alias_name = document.querySelector(`input[name=alias_${index}]`).value;
-				if(confirm(`Do you really want to remove the alias '${alias_name}'?`)) {
+				if(confirm(`Do you really want to remove the alias '${alias_name}'?\n(Make sure to save afterwards!)`)) {
 					const alias = document.querySelector(`.alias_${index}`);
 					alias.parentNode.removeChild(alias);
 				}
