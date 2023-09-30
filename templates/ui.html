@@ -69,6 +69,12 @@
 				float: right;
 				cursor: pointer;
 			}
+
+			.alias {
+				display: flex;
+				column-gap: 5px;
+				margin-bottom: 5px;
+			}
 		</style>
 	</head>
 	<body>
@@ -84,6 +90,8 @@
 				<li><strong>form</strong><br>
 					Skyrim base form ID to spawn/equip/add to inventory; depending on type.<br>
 					Form IDs are provided in hexadecimal (as displayed in most mod tools or Skyrim console) without the plugin prefix. The first 8 bits of the form ID are used for the plugin prefix determined by load order. If the plugin is ESL flagged the first 20 bits are set by load order. This prefix should not be provided. So must only provide the last 6 (or 3 for ESL plugins) hexadecimal numbers of the form ID. Leading zeros can be omitted. You can prefix the form ID with a 0x. By default we assume you mean to use a form from the Skyrim.esm game plugin. If you want to use a form from another plugin you prefix the form ID with the plugin filename and a vertical bar: Skyrim.esm|64b33.</li>
+				<li><strong>alias_group</strong><br>
+					If this parameter is set only aliases may be used for the <span class="attr">form</span> parameter. Additionally the aliases allowed will be filtered by the group entered here. Altough the usage of it is discouraged, you can use <code>*</code> to allow all aliases.</li>
 				<li><strong>count</strong><br>
 					The amount that should be spawned/added to inventory; not required or available for every type. The maximum count is 128 for type 0.</li>
 				<li><strong>name</strong><br>
@@ -122,6 +130,26 @@
 		<h2>Seach Form IDs</h2>
 		<input type="search" id="search" placeholder="Search for form ID by EditorID or name">
 		<output id="search-result"></output>
+
+		<h2>Form aliases</h2>
+		<p>You can set aliases for form ids. You can pass these aliases as the <code class="attr">form</code> value in the webhook. In combination with <code class="attr">alias_group</code> you can filter what aliases are allowed. Aliases may have any character or symbol except for spaces. Filter groups may only contain lower case letters (a-z), you can assign multiple groups to one alias, seperated with comma.</p>
+		<form method="post" action="/">
+			{%- for (i, alias) in aliases.iter().enumerate() %}
+			<div class="alias">
+				<input type="text" placeholder="Alias" name="alias_{{ i }}" value="{{ alias.alias }}">
+				<input type="text" placeholder="Form ID" name="form_{{ i }}" value="{{ alias.form }}">
+				<input type="text" placeholder="Filter groups" name="group_{{ i }}" value="{{ alias.filter_group }}">
+				<button type="button">🗑️</button>
+			</div>
+			{%- endfor %}
+			<div class="alias">
+				<input type="text" placeholder="Alias" name="alias_new" value="">
+				<input type="text" placeholder="Form ID" name="form_new" value="">
+				<input type="text" placeholder="Filter groups" name="group_new" value="">
+				<button type="button" disabled>🆕</button>
+			</div>
+			<button type="submit">Save</button>
+		</form>
 
 		<dialog id="execute-webhook">
 			<form method="dialog">

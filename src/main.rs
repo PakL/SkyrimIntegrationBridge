@@ -6,6 +6,7 @@ use std::io::Read;
 
 mod webinterface;
 pub mod formsearch;
+pub mod aliases;
 
 #[derive(Serialize, Deserialize, Default)]
 struct BridgeConfig {

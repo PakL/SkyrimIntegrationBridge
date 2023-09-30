@@ -3,17 +3,19 @@ use askama::Template;
 use serde::{ Deserialize, Serialize, de::DeserializeOwned };
 use std::path::Path;
 use std::sync::Mutex;
-use std::{ thread, time };
 use std::collections::HashMap;
+use std::{ thread, time };
 use std::fs::File;
 use std::io::{ Read, Write };
 use serde_json::json;
 
+use super::aliases;
 use super::{ formsearch, formsearch::{ Form, FormIndex } };
 
 #[derive(Template)]
 #[template(path = "ui.html")]
 struct UiTemplate {
+	aliases: Vec<aliases::Alias>,
 }
 
 #[derive(Template)]
@@ -158,7 +160,7 @@ fn write_file_with_retry<T: Serialize>(path: &Path, data: &T) -> Option<std::io:
 	result
 }
 
-fn default_response_callback(query: WebhookEventQuery, skyrim_path: String) -> reply::WithStatus<reply::Html<String>> {
+fn default_response_callback(query: WebhookEventQuery, skyrim_path: String, alias_form: HashMap<String, String>) -> reply::WithStatus<reply::Html<String>> {
 	if let Some(event_type) = query.event_type {
 		println!("> Received event {}", json!(query));
 		if event_type <= 5 {
@@ -191,7 +193,37 @@ fn default_response_callback(query: WebhookEventQuery, skyrim_path: String) -> r
 			reply::with_status(reply::html("invalid type".to_string()), warp::http::StatusCode::BAD_REQUEST)
 		}
 	} else {
-		let tpl = UiTemplate{};
+		if alias_form.contains_key("alias_new") {
+			println!("> Received alias save {}", json!(alias_form));
+			let mut new_aliases: Vec<aliases::Alias> = vec![];
+			for (key, value) in alias_form.iter() {
+				if key.starts_with("alias_") {
+					if value.is_empty() {
+						continue;
+					}
+
+					let suffix = key.trim_start_matches("alias_");
+					let form = alias_form.get(&format!("form_{}", suffix)).map_or(String::new(), |v| v.clone());
+					if form.is_empty() {
+						continue;
+					}
+					let filter_group = alias_form.get(&format!("group_{}", suffix)).map_or(String::new(), |v| v.clone());
+
+					new_aliases.push(aliases::Alias {
+						alias: value.clone(),
+						form,
+						filter_group,
+					});
+				}
+			}
+
+			aliases::set_aliases(new_aliases);
+			aliases::save_aliases();
+		} else {
+			aliases::load_aliases();
+		}
+		let aliases = aliases::get_aliases();
+		let tpl = UiTemplate{ aliases };
 		reply::with_status(reply::html(tpl.render().unwrap_or(ERROR_RESP.to_string())), warp::http::StatusCode::OK)
 	}
 }
@@ -246,6 +278,7 @@ pub async fn start_webinterface(port: u16, skyrim_path: String) {
 	let index = warp::path::end()
 		.and(warp::query::<WebhookEventQuery>())
 		.and(warp::any().map(move || skyrim_path_for_index.clone()))
+		.and(warp::body::form())
 		.map(default_response_callback);
 
 	let skyrim_path_for_help = skyrim_path.clone();

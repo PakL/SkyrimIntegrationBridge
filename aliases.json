@@ -1,0 +1,12 @@
+[
+  {
+    "alias": "chicken",
+    "form": "PakLTwitchIntegration.esp|80B",
+    "filter_group": "npc"
+  },
+  {
+    "alias": "yousuck",
+    "form": "PakLTwitchIntegration.esp|A1F",
+    "filter_group": "note"
+  }
+]
