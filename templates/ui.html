@@ -143,11 +143,11 @@
 		{%- endmatch %}
 		<form method="post" action="/">
 			{%- for (i, alias) in aliases.iter().enumerate() %}
-			<div class="alias">
+			<div class="alias alias_{{ i }}">
 				<input type="text" placeholder="Alias" name="alias_{{ i }}" value="{{ alias.alias }}">
 				<input type="text" placeholder="Form ID" name="form_{{ i }}" value="{{ alias.form }}">
 				<input type="text" placeholder="Filter groups" name="group_{{ i }}" value="{{ alias.filter_group }}">
-				<button type="button">🗑️</button>
+				<button type="button" onclick="removeAlias('{{ i }}')">🗑️</button>
 			</div>
 			{%- endfor %}
 			<div class="alias">
@@ -370,6 +370,18 @@
 					});
 				}, 500);
 			});
+		</script>
+		<script type="application/javascript">
+			/**
+			 * @param {string} index
+			 */
+			function removeAlias(index) {
+				const alias_name = document.querySelector(`input[name=alias_${index}]`).value;
+				if(confirm(`Do you really want to remove the alias '${alias_name}'?`)) {
+					const alias = document.querySelector(`.alias_${index}`);
+					alias.parentNode.removeChild(alias);
+				}
+			}
 		</script>
 	</body>
 </html>
